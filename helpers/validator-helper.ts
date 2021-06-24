@@ -18,6 +18,9 @@ type ValidatorType = {
     type: 'match';
     errorMessage: string;
     matchValue: string;
+} | {
+    type: 'required';
+    errorMessage: string;
 };
 
 interface IRequestValidatorInput {
@@ -25,14 +28,27 @@ interface IRequestValidatorInput {
     defaultValue?: string;
 }
 
+interface IResponseValidatorInput {
+    props: {
+        value: string;
+        onChangeText: (text: string) => void;
+        errorMessage: string;
+    };
+    validate: () => {
+        isValid: boolean;
+    };
+    ref?: React.RefObject<any>;
+}
+
 // an input can have many validators, so we need to pass an array listValidators
 export function useValidatorInput({
     listValidators,
     defaultValue,
-}: IRequestValidatorInput) {
+}: IRequestValidatorInput): IResponseValidatorInput {
     // an input has a value
     const [value, setValue] = React.useState(defaultValue ?? '');
     const [errorMessage, setErrorMessage] = React.useState('');
+    const ref = React.createRef<any>();
 
     // validate should return error message when check array listValidators
     function validate(): string {
@@ -64,6 +80,11 @@ export function useValidatorInput({
                         return validator.errorMessage ?? 'Invalid value';
                     }
                     break;
+                case 'required':
+                    if (!value || value.trim() === '') {
+                        return validator.errorMessage ?? 'Invalid value';
+                    }
+                    break;
             }
         }
 
@@ -74,9 +95,63 @@ export function useValidatorInput({
         setErrorMessage(validate());
     }, [value, listValidators]); // everytime re-enter password changes or password changes we need to validate again :D
 
+    // we need a validate function for form validator
     return {
-        value,
-        onChangeText: (text: string) => setValue(text),
-        errorMessage,
+        props: {
+            value,
+            onChangeText: (text: string) => setValue(text),
+            errorMessage,
+        },
+        validate: () => {
+            const errorMessage = validate();
+            setErrorMessage(errorMessage);
+
+            return {
+                isValid: errorMessage === '', // is used for form validator
+            }
+        },
+        ref,
+    }
+}
+
+interface IRequestValidatorForm {
+    inputs: IResponseValidatorInput[];
+    isFocusOnErrorInput?: boolean;
+}
+
+export function useValidatorForm(request: IRequestValidatorForm) {
+    const [isValid, setIsValid] = React.useState(false);
+
+    // validate all inputs, not stop when any input is invalid
+    function validate() {
+        let result = true;
+        let errorInputRef: React.RefObject<any>;
+        for (let i = 0; i < request.inputs.length; i++) {
+            const input = request.inputs[i];
+            const { isValid } = input.validate();
+            if (result === true && isValid === false) {
+                result = false;
+                errorInputRef = input.ref;
+            }
+        }
+
+        if (result === false) {
+            if (errorInputRef) {
+                errorInputRef.current?.focus();
+            }
+        }
+
+        return result;
+    }
+
+    return {
+        isValid,
+        validate: () => {
+            const isValid = validate();
+            setIsValid(isValid);
+            return {
+                isValid,
+            }
+        }
     }
 }
