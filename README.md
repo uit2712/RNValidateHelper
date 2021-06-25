@@ -17,7 +17,8 @@
   * [Form validation](#form-validation)
 # Demo
 - Link youtube:
-- Link github: https://github.com/uit2712/RNElementInputValidator
++ Part 1: https://youtu.be/Cehu-tKba4Q
++ Part 2: https://youtu.be/dQROqAhKVgc
 # Installation
 ```
 npm install --save @uit2712/react-validator-helper
